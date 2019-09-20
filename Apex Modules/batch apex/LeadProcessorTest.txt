@@ -1,0 +1,27 @@
+@isTest
+public class LeadProcessorTest {
+	@testSetup 
+    static void setup(){
+        List<Lead> leads = new List<Lead>();
+        
+        // insert 200 leads
+        for(integer i = 0; i < 200; i++){
+            leads.add(new Lead(LastName = 'Lead '+i, 
+                              Company = 'Company '+i));
+        }
+        insert leads;
+    }
+    static testmethod void test(){
+        //List<Lead> oldLeads = [SELECT Id FROM Lead];
+        Test.startTest();
+        LeadProcessor lp = new LeadProcessor();
+        Database.executeBatch(lp);
+        Test.stopTest();
+        // check if all leads were updated properly
+        List<Lead> newLeads = [SELECT Id, LeadSource FROM Lead];
+        for(Lead x : newLeads){
+            System.assert(x.LeadSource == 'Dreamforce');
+        }
+        
+    }
+}

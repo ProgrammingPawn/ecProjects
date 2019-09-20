@@ -1,0 +1,37 @@
+trigger SubProjTrigger on SubProject__c (after delete, after insert, after update) {
+    
+    if(Trigger.isInsert || trigger.isUpdate){
+    	// instantiate subproject map and update list
+    	List<Project__c> proj = new List<Project__c>();
+    	Map<Id, List<SubProject__c>> subMap = new  Map<Id, List<SubProject__c>>();
+    
+		// generate map of subprojects with parent project as key
+    	subMap = spHandler.generateSubMap(Trigger.new);
+    
+    	System.debug(subMap.size());
+    	
+		// generate list of projects to update
+		proj = spHandler.generateProjUpdate(subMap);
+    
+    	// update projects
+    	update proj;
+    }
+    else if(Trigger.isDelete){
+        // instantiate subproject map project ref list, and proj update list
+    	List<SubProject__c> subs = new List<SubProject__c>();
+        List<Project__c> projUp = new List<Project__c>();
+        List<Id> projIds = new List<Id>();
+    	Map<Id, List<SubProject__c>> subMap = new  Map<Id, List<SubProject__c>>();
+        // list of existing subprojects of affected projects
+       	subs = spHandler.relatedSP(Trigger.Old);
+        
+        // create map of projects with non-null subprojects
+        subMap = spHandler.generateSubMapDel(subs);
+        
+        // Update project start dates as needed
+        projUp = spHandler.projDelUpdate(subMap, Trigger.Old);
+        
+        // post updates
+        update projUp;
+    }
+}

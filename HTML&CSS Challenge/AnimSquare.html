@@ -1,0 +1,23 @@
+<!DOCTYPE html> 
+<html>
+	<head>
+		<style>
+			#square{
+				height:50px;
+				width:50px;
+				background-color:#538cc6;
+				position:relative;
+				animation: move 3s infinite;
+			}	
+			@keyframes move{
+				0%	 {left:0px; top:0px}
+				50%	 {left:50px; top:0px}
+				100% {background-color:#b3e6ff; left:50px; top:0px}
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Animated Square</h2>
+		<div id="square"></div>
+	</body>
+</html>	

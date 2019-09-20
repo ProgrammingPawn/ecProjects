@@ -1,0 +1,131 @@
+@isTest
+public class TestProjTrigger {
+    // tests inserting new projects
+    @isTest static void TestInsProj(){
+        
+        List<Project__c> projlst = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        
+        System.debug('Sites created');
+        projlst = TestFactory.createProjects();  
+        Test.startTest();
+        Database.SaveResult[] result = Database.insert(projlst, false);
+        System.debug('stillalive');
+        Test.stopTest();
+        sites = [SELECT Id, Start_Date__c FROM Site__c];
+        // updates were successful and projects were properly assigned
+        for(Integer i = 0; i<result.size()-1; i++){
+            System.assert(result[i].isSuccess());
+            System.assert(projlst[i].Site__c == sites[i].Id);
+        }  
+        // checks if last project was assigned properly
+        System.assert(projlst[projlst.size()-1].Site__c == sites[0].Id);
+        
+        // check if site start dates were properly updated
+        for(Integer i = 0; i<sites.size()-1; i++){
+             if(i<5){
+				System.assert(sites[i].Start_Date__c == null);
+            }
+            else{
+              	System.assert(sites[i].Start_Date__c != null);
+            }
+        }
+    }
+    
+    @isTest static void TestUpdateProjSite(){
+        List<Project__c> projlst = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        projlst = TestFactory.createProjects();
+        insert projlst;
+        projlst = [SELECT Id, Name, Site__c FROM Project__c];
+        sites = [SELECT Id, Name FROM Site__c];
+        
+        // update each project site to site 1
+        for(Project__c p : projlst){
+            p.Site__c = sites[0].Id;
+        }
+        
+        // update
+        Test.startTest();
+        Database.SaveResult[] result = Database.update(projlst, false);
+        Test.stopTest();
+        
+        // get list of updated projects and sites
+        projlst = [SELECT Id, Site__c FROM Project__c];
+        sites = [SELECT Id, Number_Of_Projects__C FROM Site__c];
+
+        // updates were successful
+        for(Integer i = 0; i<result.size(); i++){
+            System.assert(result[i].isSuccess());
+            System.assert(projlst[i].Site__c == sites[0].Id);
+        } 
+        
+        // number of projects is correct for each site
+        for(Integer i = 0; i<sites.size(); i++){
+            if(i==0)
+                System.assert(sites[i].Number_of_Projects__c == 11);
+            else
+                System.assert(sites[i].Number_of_Projects__c == 0);
+        }
+    }
+    
+    @isTest public static void TestProjNumUpdate(){
+        List<Project__c> projlst = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        projlst = TestFactory.createProjects();
+        sites = [SELECT Id, Name FROM Site__c];
+		// change each project site to site 1
+        for(Project__c p : projlst){
+            p.Site__c = sites[0].Id;
+        }
+        // insert projects 
+        insert projlst;
+       	
+        
+        projlst[3].Site__c = sites[3].Id;
+        projlst[2].Site__c = sites[3].Id;
+        projlst[1].Site__c = sites[5].Id;
+        
+        // update
+        Test.startTest();
+        Database.SaveResult[] result = Database.update(projlst, false);
+        Test.stopTest();
+        projlst = [SELECT Id, Name, Site__c FROM Project__c];
+        sites = [SELECT Id, Number_Of_Projects__c FROM Site__c];
+        
+        System.assert(projlst[3].Site__c == sites[3].id &&
+                      projlst[2].Site__c == sites[3].id &&
+                      projlst[1].Site__c == sites[5].id);
+        
+        System.assert(sites[3].Number_Of_Projects__c == 2 &&
+                      sites[5].Number_Of_Projects__c == 1 &&
+                      sites[0].Number_Of_Projects__c == 8);
+    }
+    
+    @isTest public static void TestProjectDelete(){
+       List<Project__c> projlst = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        projlst = TestFactory.createProjects();
+        sites = [SELECT Id, Name FROM Site__c];
+		// change each project site to site 1
+        for(Project__c p : projlst){
+            p.Site__c = sites[0].Id;
+        }
+        // further site adjustment
+        projlst[3].Site__c = sites[3].Id;
+        projlst[2].Site__c = sites[3].Id;
+        projlst[1].Site__c = sites[5].Id;
+        // insert projects 
+        insert projlst;
+        
+        // delete
+        Test.startTest();
+        delete projlst[3];
+        Test.stopTest();
+        
+        sites = [SELECT Id, Start_Date__c FROM Site__c];
+        
+        // ensure site has proper start date
+        System.assert(sites[3].Start_Date__c == projlst[2].Start_Date__c);
+    }
+}

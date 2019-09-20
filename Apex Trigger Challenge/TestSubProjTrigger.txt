@@ -1,0 +1,76 @@
+@isTest
+public class TestSubProjTrigger {
+    // tests inserting new projects
+    @isTest static void TestInsSubProj(){
+        List<SubProject__c> sprojlst = new List<SubProject__c>();
+        List<Project__c> projects = new List<Project__c>();
+        
+        System.debug('projects created');
+        sprojlst = TestFactory.createSubProjects();  
+        Test.startTest();
+        Database.SaveResult[] result = Database.insert(sprojlst, false);
+        System.debug('stillalive');
+        Test.stopTest();
+        Projects = [SELECT Id, Start_Date__c FROM Project__c];
+        // updates were successful and projects were properly assigned
+        for(Integer i = 0; i<result.size()-1; i++){
+            System.assert(result[i].isSuccess());
+            System.assert(sprojlst[i].Project__C == projects[i].Id);
+        }  
+        
+        // check if projects start dates were properly updated
+        for(Integer i = 0; i<projects.size()-1; i++){
+             if(i<5){
+				System.assert(projects[i].Start_Date__c == sprojlst[i].Start_Date__c);
+            }
+            else{
+              	System.assert(projects[i].Start_Date__c != sprojlst[i].Start_Date__c);
+            }
+        }
+    }
+    
+    @isTest static void TestUpdateSubProject(){
+        List<SubProject__c> sprojlst = new List<SubProject__c>();
+        List<Project__c> projects = new List<Project__c>();
+        sprojlst = TestFactory.createSubProjects();
+        insert sprojlst;
+        
+ 		// update the start date of two sub projects
+ 		sprojlst[0].Start_Date__c.addDays(2);
+        sprojlst[1].Start_Date__c.addDays(2);
+        
+        // update
+        Test.startTest();
+        Database.SaveResult[] result = Database.update(sprojlst, false);
+        Test.stopTest();
+        
+        // get list of updated projects
+        projects = [SELECT Id, Start_Date__c FROM Project__c WHERE ID = :sprojlst[0].Project__c 
+                   OR ID = :sprojlst[1].Project__c];
+
+        // updates were successful
+        System.assert(result[0].isSuccess());
+        System.assert(result[1].isSuccess());
+        System.assert(sprojlst[0].Start_Date__c == projects[0].Start_Date__c);
+        System.assert(sprojlst[1].Start_Date__c == projects[1].Start_Date__c);
+    }
+    
+    @isTest public static void TestSubProjectDelete(){
+       List<SubProject__c> sprojlst = new List<SubProject__c>();
+        List<Project__c> projects = new List<Project__c>();
+        sprojlst = TestFactory.createSubProjects();
+        insert sprojlst;
+        
+        // delete
+        Test.startTest();
+        delete sprojlst[3];
+        delete sprojlst[6];
+        Test.stopTest();
+        
+        projects = [SELECT Id, Start_Date__c FROM Project__c];
+        
+        // ensure project has proper start date
+        System.assert(projects[3].Start_Date__c == null);
+        System.assert(projects[6].Start_Date__c == null);
+    }
+}

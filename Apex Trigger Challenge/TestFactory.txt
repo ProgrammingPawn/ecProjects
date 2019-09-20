@@ -1,0 +1,64 @@
+@isTest
+public class TestFactory {
+    public static List<Site__c> createSites(){
+    	List<Site__c> tsite = new List<Site__c>();  
+        date d = Date.newInstance(2019, 9, 12);
+        // create sites with no start date
+        for(Integer i = 0; i < 10; i++){
+            Site__c s = new Site__c(Name='Test Site '+i); 
+            tsite.add(s);
+        }
+        tsite[tsite.size()-1].Start_Date__c = d;
+        return tsite;
+    }
+    
+    public static List<Project__c> createProjects(){
+        List<Project__c> tproj = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        date d = Date.newInstance(2019, 9, 12);
+        
+        sites = createSites();
+        
+        insert sites;
+        // create a list of projects with half of them having no start date
+        for(Integer i = 0; i < 10; i++){
+            if(i<5){
+                Project__c p = new Project__c(Name='Test Project '+i, Site__c=sites[i].id);
+                tproj.add(p);
+            }
+            else{
+                Project__c p = new Project__c(Name='Test Project '+i, Site__c=sites[i].id, 
+                                              Start_date__c = d.addDays(i));
+                tproj.add(p);
+            }
+        }
+        // add a second project with no start date to the first site
+        Project__c nullProj = new Project__c(Name='Wilder', Site__c=sites[0].id);
+        tproj.add(nullProj);
+        
+        return tproj;
+    }
+    
+    public static List<SubProject__c> createSubProjects(){
+        List<SubProject__c> tsub = new List<SubProject__c>();
+        List<Project__c> tproj = new List<Project__c>();
+        Date d = Date.newInstance(2019,9,12);
+        
+        tproj = createProjects();
+        insert tproj;
+        // create a list of subprojects with half having no start dates
+        // the half that do are related to the projects that do not
+        for(Integer i = 0; i < 10; i++){
+            if(i<5){
+                SubProject__c sp = new SubProject__c(Name='Test SubProject '+i, 
+                                                     Start_Date__c = d.addDays(i), Project__c=tproj[i].id);
+                tsub.add(sp);
+            }
+            else{
+                 SubProject__c sp = new SubProject__c(Name='Test SubProject '+i, Project__c=tproj[i].id);
+                tsub.add(sp);
+            }
+        }
+        return tsub;
+    }
+}

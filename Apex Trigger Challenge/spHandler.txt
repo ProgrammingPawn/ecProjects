@@ -1,0 +1,122 @@
+public class spHandler {
+
+    public static Map<Id,List<SubProject__c>> generateSubMap(List<SubProject__c> trig){
+        // lists to hold the parent and child objects and references
+        List<SubProject__c> sProj = new List<SubProject__c>();
+        Map<Id, List<SubProject__c>> subMap = new  Map<Id, List<SubProject__c>>();
+        List<ID> notNullP = new List<ID>();
+        List<ID> projID = new List<ID>();
+        // get ids of projects
+        for(SubProject__c t : trig){
+            if(!projID.contains(t.Project__c))
+                projID.add(t.Project__c);
+        }
+        // get ids of all non-null projects
+        for(Project__c op : [SELECT ID, Start_Date__c FROM Project__c WHERE ID IN :projID]){
+            if(op.Start_Date__c != null)
+                notNullP.add(op.Id);
+        }
+        
+        // place all subprojects that have a start date and a null parent project
+        // inside the map with the parent project as the key
+        for(SubProject__c sp : trig){
+            if(sp.Start_Date__c != null && !notNullP.contains(sp.Project__c)){
+                if(subMap.containsKey(sp.Project__c)){
+                    subMap.get(sp.Project__c).add(sp);
+                }
+                else{
+                    System.debug('no key in map');
+                    sProj.add(sp);
+                    subMap.put(sp.Project__c, sProj.clone()); 
+                    sProj.clear();
+                }
+            }
+        }
+        System.debug(subMap.isEmpty());
+        // map of projects with non-null subprojects
+        return subMap;
+    }
+    
+     public static Map<Id,List<SubProject__c>> generateSubMapDel(List<SubProject__c> trig){
+        // lists to hold the parent and child objects and references
+        List<SubProject__c> sProj = new List<SubProject__c>();
+        Map<Id, List<SubProject__c>> subMap = new  Map<Id, List<SubProject__c>>();
+        List<ID> notNullP = new List<ID>();
+        List<ID> projID = new List<ID>();
+        // get ids of projects
+        for(SubProject__c t : trig){
+            if(!projID.contains(t.Project__c))
+                projID.add(t.Project__c);
+        }
+        
+        // place all subprojects that have a start date
+        // inside the map with the parent project as the key
+        for(SubProject__c sp : trig){
+            if(sp.Start_Date__c != null){
+                if(subMap.containsKey(sp.Project__c)){
+                    subMap.get(sp.Project__c).add(sp);
+                }
+                else{
+                    System.debug('no key in map');
+                    sProj.add(sp);
+                    subMap.put(sp.Project__c, sProj.clone()); 
+                    sProj.clear();
+                }
+            }
+        }
+        System.debug(subMap.isEmpty());
+        // map of projects with non-null subprojects
+        return subMap;
+    }
+    
+    public static List<Project__c> generateProjUpdate(Map<Id, List<SubProject__c>> subMap){
+        List<Project__c> proj = new List<Project__c>();
+        
+        // populate project start date with oldest value
+    	for(Project__c p : [SELECT Id, Name FROM Project__c WHERE Id IN :subMap.keySet()]){
+            System.debug('map contains id: '+subMap.containsKey(p.Id));
+            System.debug('list is empty: '+subMap.get(p.Id).isEmpty());
+       		Date oldest = subMap.get(p.Id).get(0).Start_Date__c;
+        	for(SubProject__c sp : submap.get(p.Id)){
+            	if(oldest > sp.Start_Date__c)
+                	oldest = sp.Start_Date__c;
+        	}
+        	p.Start_Date__c = oldest;
+            proj.add(p);
+    	}
+        return proj; 
+    }
+    
+    public static List<SubProject__c> relatedSP(List<SubProject__c> trig){
+        List<Id> projIDs = new List<Id>();
+        List<SubProject__c> subP = new List<SubProject__c>();
+        // store reference to all parent projects of deleted subprojects
+        for(SubProject__c sp : trig){
+            if(!projIds.contains(sp.Project__c))
+                projIds.add(sp.Project__c);
+        }
+        // list of existing subprojects of affected projects
+        subP = [Select ID, Name, Start_Date__c, Project__c FROM SubProject__c WHERE Project__c IN :projIDs];
+        
+        return subP;
+    }
+    
+    public static List<Project__c> projDelUpdate(Map<Id, List<SubProject__c>> subMap, List<SubProject__c> trig){
+        List<Project__c> projUp = new List<Project__c>();
+        List<ID> nullProjID = new List<ID>();
+        // store references for projects that have no non-null subprojects
+        for(SubProject__c sp : trig){
+            if(!subMap.containsKey(sp.Project__c))
+                nullProjID.add(sp.Project__c);
+        }
+        // find each project who's start date should be null, update the start date, and store the project
+        for(Project__c p : [Select ID, Name FROM Project__c WHERE ID IN :nullProjID]){
+            p.Start_Date__c = null;
+            projUp.add(p);
+        }
+        // update each project's start date with oldest start date of their subprojects
+        projUp.addAll(generateProjUpdate(subMap));
+        
+        return projUp;
+    }  
+}

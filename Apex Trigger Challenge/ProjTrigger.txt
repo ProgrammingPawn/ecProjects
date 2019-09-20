@@ -1,0 +1,55 @@
+trigger ProjTrigger on Project__c (after update, after insert, after delete) {
+    if(Trigger.isInsert){
+        // lists to hold the parent and child objects and references
+        List<Site__c> sites = new List<Site__c>();
+        Map<Id, List<Project__c>> projMap = new  Map<Id, List<Project__c>>();
+        
+        // updates number of projects if needed
+       	pHandler.updateNumProjIns(Trigger.New);
+        
+        // generate map of projects with parent site as key
+        projMap = pHandler.generateProjMap(Trigger.New);
+        
+        // generate list of sites to update
+        sites = pHandler.generateSiteUpdate(projMap);
+        
+        // update sites
+        update sites;
+    }
+    else if(Trigger.isUpdate){
+        // lists to hold the parent and child objects and references
+        List<Site__c> sites = new List<Site__c>();
+        Map<Id, List<Project__c>> projMap = new  Map<Id, List<Project__c>>();
+        
+        // updates number of projects if needed
+       	pHandler.updateNumProj(Trigger.New, Trigger.oldMap);
+        
+        // generate map of projects with parent site as key
+        projMap = pHandler.generateProjMap(Trigger.New);
+        
+        // generate list of sites to update
+        sites = pHandler.siteDelUpdate(projMap, Trigger.New);
+        
+        // update sites
+        update sites;
+    }
+    else if(Trigger.isDelete){
+        // instantiate project map site ref list, and site update list
+        List<Project__c> proj = new List<Project__c>();
+        List<Site__c> siteUp = new List<Site__c>();
+        Map<Id, List<Project__c>> projMap = new  Map<Id, List<Project__c>>();
+        
+        // list of existing projects of affected sites
+        proj = pHandler.relatedP(Trigger.Old);
+        
+        // create map of sites with non-null projects
+        projmap = pHandler.generateProjMapDel(proj);
+        
+        // Update site start dates as needed
+        siteUp = pHandler.siteDelUpdate(projMap, Trigger.Old);
+        
+        // post updates
+        update siteUp;
+    }
+    
+}

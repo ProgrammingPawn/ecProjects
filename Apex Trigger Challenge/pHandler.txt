@@ -1,0 +1,234 @@
+public class pHandler {
+    public static void updateNumProjIns(List<Project__c> trig){
+        List<Site__c> sites = new List<Site__c>();
+        Map<ID, Integer> addProjects = new Map<ID, Integer>();  
+        List<ID> siteID = new List<ID>();
+        
+        // store references to all parent sites of added projects
+        // and create a map that tracks the number of projects added to each site
+        for(Project__c p : trig){
+            if(!siteID.contains(p.Site__c)){
+                siteID.add(p.Site__c);
+                addProjects.put(p.Site__c, 1);
+            }
+            else{
+                Integer hold = addProjects.get(p.Site__c);
+                hold++;
+                addProjects.put(p.Site__c, hold);
+            }
+        }
+        
+		// update number of projects for each site that gained projects
+        for(Site__c s : [Select ID, Name, Number_Of_Projects__c FROM Site__c WHERE ID IN :siteID]){
+            Integer numP = (Integer)s.Number_Of_Projects__c;
+			s.Number_Of_Projects__c = numP + addProjects.get(s.Id);
+            sites.add(s);
+        }
+        
+        //publish updated sites
+        update sites;
+    }
+    
+    public static void updateNumProj(List<Project__c> newProj, Map<ID, Project__c> oldProj){
+        Integer hold;
+        List<Site__c> sites = new List<Site__c>();
+        List<Id> siteID = new List<Id>();
+		Map<ID, Integer> delProjects = new Map<ID, Integer>();
+		Map<ID, Integer> addProjects = new Map<ID, Integer>(); 
+
+        // compare each new record with the old, and update the add and deletion maps with site and
+        // project count information       
+        for(Project__c p : newProj){
+            if(oldProj.get(p.Id).Site__c != p.Site__c){
+                if(!siteID.contains(p.Site__c) && !siteID.contains(oldProj.get(p.Id).Site__c)){
+                    delProjects.put(oldProj.get(p.Id).Site__c, 1);
+                    addProjects.put(p.Site__c, 1);
+                    siteID.add(p.Site__c);
+                    siteID.add(oldProj.get(p.Id).Site__c);
+                    System.debug('both update');
+                }
+                else if(!siteID.contains(p.Site__c)){
+                    addProjects.put(p.Site__c, 1);
+                    siteID.add(p.Site__c);
+                    hold = delProjects.get(oldProj.get(p.Id).Site__c);
+                    hold++;
+                    delProjects.put(oldProj.get(p.Id).Site__c, hold);
+                }
+                else if(!siteID.contains(oldProj.get(p.Id).Site__c)){
+                    delProjects.put(oldProj.get(p.Id).Site__c, 1);
+                    siteID.add(oldProj.get(p.Id).Site__c);
+                    hold = addProjects.get(p.Site__c);
+                    hold++;
+                    System.debug('projects added: '+hold);
+                    addProjects.put(p.Site__c, hold);                   
+                }
+                else{
+                    hold = addProjects.get(p.Site__c);
+                    hold++;
+                    addProjects.put(p.Site__c, hold);
+                    hold = delProjects.get(oldProj.get(p.Id).Site__c);
+                    hold++;
+                    delProjects.put(oldProj.get(p.Id).Site__c, hold);                    
+                }
+            }
+        }
+
+        // get the effected sites and update their number of projects
+        for(Site__c s : [SELECT Id, Number_Of_Projects__c FROM Site__c WHERE Id IN :SiteID]){
+            if(delProjects.containsKey(s.Id)){
+                Integer d = (Integer)s.Number_Of_Projects__c;
+                s.Number_Of_Projects__c = d - delProjects.get(s.Id);
+                sites.add(s);
+                System.debug('deplete');
+            }
+            if(addProjects.containsKey(s.Id)){
+                Integer a = (Integer)s.Number_Of_Projects__c;
+                s.Number_Of_Projects__c = a + addProjects.get(s.Id); 
+                sites.add(s);
+                System.debug('add');
+            }
+        }
+        
+        // post updates
+        update sites;
+    }
+    
+	public static Map<Id,List<Project__c>> generateProjMap(List<Project__c> trig){
+        // lists to hold the parent and child objects and references
+        List<Project__c> proj = new List<Project__c>();
+        Map<Id, List<Project__c>> projMap = new  Map<Id, List<Project__c>>();
+        List<ID> notNullSt = new List<ID>();
+        List<ID> siteID = new List<ID>();
+        
+        for(Project__c p : trig){
+            if(!siteID.contains(p.Site__c)){
+                siteID.add(p.Site__c);
+            }
+        }
+        
+        // get ids of all non-null sites
+        for(Site__c op : [SELECT ID, Start_Date__c FROM Site__c WHERE ID IN :siteID]){
+            if(op.Start_Date__c != null)
+                notNullSt.add(op.Id);
+        }
+        
+        // place all projects that have a start date and a null parent site
+        // inside the map with the parent site as the key
+		for(Project__c p : trig){
+        	if(p.Start_Date__c != null && !notNullSt.contains(p.Site__c)){
+            	if(projMap.containsKey(p.Site__c)){
+                	projMap.get(p.Site__c).add(p);
+            	}
+            	else{
+                	proj.add(p);
+                	projMap.put(p.Site__c, proj.clone()); 
+                	proj.clear();
+            	}
+			}
+		}
+        // map of null sites with non-null projects
+        return projMap;
+    }
+    
+    public static Map<Id,List<Project__c>> generateProjMapDel(List<Project__c> trig){
+        // lists to hold the parent and child objects and references
+        List<Project__c> proj = new List<Project__c>();
+        Map<Id, List<Project__c>> projMap = new  Map<Id, List<Project__c>>();
+        List<ID> notNullSt = new List<ID>();
+        List<ID> siteID = new List<ID>();
+        
+        // get ids of sites
+        for(Project__c t : trig){
+            if(!siteID.contains(t.Site__c))
+                siteID.add(t.Site__c);
+        }
+        
+        // place all projects that have a start date
+        // inside the map with the parent site as the key
+		for(Project__c p : trig){
+        	if(p.Start_Date__c != null){
+            	if(projMap.containsKey(p.Site__c)){
+                	projMap.get(p.Site__c).add(p);
+            	}
+            	else{
+                	proj.add(p);
+                	projMap.put(p.Site__c, proj.clone()); 
+                	proj.clear();
+            	}
+			}
+		}
+        // map of null sites with non-null projects
+        return projMap;
+    }
+    
+    public static List<Site__c> generateSiteUpdate(Map<Id, List<Project__c>> projMap){
+        List<Site__c> sites = new List<Site__c>();
+        
+        // populate site start date with oldest value
+    	for(Site__c s : [SELECT Id, Name FROM Site__c WHERE Id IN :projMap.keySet()]){
+        	Date oldest = projmap.get(s.Id).get(0).Start_Date__c;
+        	for(Project__c p : projmap.get(s.Id)){
+            	if(oldest > p.Start_Date__c)
+                	oldest = p.Start_Date__c;
+        	}
+        	s.Start_Date__c = oldest;
+            sites.add(s);
+    	} 
+        return sites;
+    }
+    
+    public static List<Project__c> relatedP(List<Project__c> trig){
+        List<Id> siteIDs = new List<Id>();
+        List<Project__c> proj = new List<Project__c>();
+        List<Site__c> sites = new List<Site__c>();
+        Map<ID, Integer> delProjects = new Map<ID, Integer>();
+        
+        // store references to all parent sites of deleted projects
+        // and create a map that tracks the number of projects deleted from each site
+        for(Project__c p : trig){
+            if(!siteIDs.contains(p.Site__c)){
+                siteIDs.add(p.Site__c);
+                delProjects.put(p.Site__c, 1);
+            }
+            else{
+                Integer hold = delProjects.get(p.Site__c);
+                hold++;
+                delProjects.put(p.Site__c, hold);
+            }
+        }
+        
+        // update number of projects for each site whose projects were deleted
+        for(Site__c s : [Select ID, Name, Number_Of_Projects__c FROM Site__c WHERE ID IN :siteIDs]){
+            Integer numP = (Integer)s.Number_Of_Projects__c;
+			s.Number_Of_Projects__c = numP - delProjects.get(s.Id);
+            sites.add(s);
+        }
+        
+        // list of existing projects of affected sites
+        proj = [Select ID, Name, Start_Date__c, Site__c FROM Project__c WHERE Site__c IN :siteIDs];
+        
+        // publish the updates
+        update sites;
+        
+        return proj;
+    }
+    
+     public static List<Site__c> siteDelUpdate(Map<Id, List<Project__c>> projMap, List<Project__c> trig){
+        List<Site__c> SiteUp = new List<Site__c>();
+        List<ID> nullSiteID = new List<ID>();
+        // store references for sites that have no non-null projects
+        for(Project__c p : trig){
+            if(!projMap.containsKey(p.Site__c))
+                nullSiteID.add(p.Site__c);
+        }
+        // find each site who's start date should be null, update the start date, and store the site
+        for(Site__c s : [Select ID, Name FROM Site__c WHERE ID IN :nullSiteID]){
+            s.Start_Date__c = null;
+            SiteUp.add(s);
+        }
+        // update each project's start date with oldest start date of their subprojects
+        siteUp.addAll(generateSiteUpdate(ProjMap));
+        
+        return siteUp;
+    }  
+}

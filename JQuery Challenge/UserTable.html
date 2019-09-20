@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>User Table</title>
+		<link href = "http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/base/jquery-ui.css"
+			rel = "stylesheet">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+		<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.js"></script>
+		<style>
+			table{
+			    font-family: arial, sans-serif;
+				border-collapse: collapse;
+				width: 100%;
+			}
+			th{
+				background-color:#e0dede;
+				border: 1px solid #dddddd;
+			    text-align: left;
+				padding: 8px;
+			}
+			td{
+				border: 1px solid #dddddd;
+			    text-align: left;
+				padding: 8px;			
+			}
+			#dialog, #error{
+				display:none;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>User Table</h2>
+		<table id="userTable">
+			<tr>
+				<th>Name</th>
+				<th>Email</th>
+				<th>Password</th>
+			</tr>		
+		</table>
+		<button id="newUser">Create new user</button>
+		
+		<div id="dialog">
+			Name: <input id="name" type="text">
+			</br>
+			Email: <input id="email" type="text">
+			</br>
+			Pass: <input id="password" type="text">
+		</div>
+		
+		<div id="error">
+			Invalid user information!
+		</div>
+	</body>
+	<script type="text/javascript" src="UTScript.js">
+	</script>	
+</html>	
+		
